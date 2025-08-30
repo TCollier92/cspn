@@ -1,0 +1,27 @@
+{
+    "name": "Dev Environment",
+    "dockerFile": "../Dockerfile",
+    "customizations": {
+        "vscode": {
+            "settings":{
+                "vscode-node.autoStartDebugger": true 
+            },
+            "extensions": [
+            "dbaeumer.vscode-eslint",
+            "esbenp.prettier-vscode",
+            "Google.geminicodeassist"
+            ]
+        }
+    },
+    "build":{
+        "args": {
+            "SKIP_NPM_INSTALL": "true",
+            "INSTALL_BASH":"true"
+        }
+    },
+    "forwardPorts": [
+        3000
+    ],
+    "onCreateCommand": "/bin/bash .devcontainer/create.sh",
+    "postCreateCommand": "/bin/bash .devcontainer/post-create.sh"
+}
