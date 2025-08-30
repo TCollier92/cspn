@@ -16,7 +16,8 @@
     "build":{
         "args": {
             "SKIP_NPM_INSTALL": "true",
-            "INSTALL_BASH":"true"
+            "INSTALL_BASH":"true",
+            "INSTALL_GIT":"true"
         }
     },
     "forwardPorts": [

@@ -7,10 +7,12 @@ FROM node:lts-alpine
 ARG SKIP_NPM_INSTALL=false
 # Use an argument to conditionally install bash
 ARG INSTALL_BASH=false
+ARG INSTALL_GIT=false
 
 # Check if bash should be installed
 # This is typically done because some base images (like Alpine) don't include it.
 RUN if [ "$INSTALL_BASH" = "true" ]; then apk add --no-cache bash; fi
+RUN if [ "$INSTALL_GIT" = "true" ]; then apk add --no-cache git; fi
 
 # Set the working directory inside the container.
 # This is where your application code will live.
