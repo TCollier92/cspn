@@ -83,11 +83,22 @@ app.get("/auth/logout", (req, res) => {
   });
 });
 
-const sslOptions = {
-  key: fs.readFileSync(path.join(__dirname, "..", "certs", "key.pem")),
-  cert: fs.readFileSync(path.join(__dirname, "..", "certs", "cert.pem")),
-};
+if (process.env.NODE_ENV === "production") {
+  // In production, the App Platform's load balancer handles SSL termination.
+  // The app should listen on HTTP.
+  app.listen(port, () => {
+    // The platform will expose the app on port 80 and 443.
+    // The 'port' variable will be provided by the platform environment.
+    console.log(`App listening on port ${port}`);
+  });
+} else {
+  // For local development, we use the self-signed certificate.
+  const sslOptions = {
+    key: fs.readFileSync(path.join(__dirname, "..", "certs", "key.pem")),
+    cert: fs.readFileSync(path.join(__dirname, "..", "certs", "cert.pem")),
+  };
 
-https.createServer(sslOptions, app).listen(port, () => {
-  console.log(`Example app listening at https://localhost:${port}`);
-});
+  https.createServer(sslOptions, app).listen(port, () => {
+    console.log(`Example app listening at https://localhost:${port}`);
+  });
+}
