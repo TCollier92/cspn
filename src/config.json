@@ -1,0 +1,12 @@
+{
+    "Leagues":[
+        {
+            "Name": "Division 1",
+            "Key": "699441"
+        },
+        {
+            "Name": "Division 2",
+            "Key": "590224"
+        }
+    ]
+}

@@ -10,6 +10,7 @@ import { fileURLToPath } from "url";
 
 // Helper to use require in ES modules for loading JSON
 const require = createRequire(import.meta.url);
+const config = require("./config.json");
 const app = express();
 const port = process.env.PORT || 3000; // Use environment variable or default to 3000
 
@@ -20,7 +21,7 @@ const yf = new YahooFantasy(
   process.env.YAHOO_CONSUMER_KEY,
   process.env.YAHOO_CONSUMER_SECRET,
   null, // tokenCallbackFunction
-  `https://${process.env.HOSTNAME}/auth/yahoo/callback` // redirectUri
+  `https://${process.env.APP_HOSTNAME}/auth/yahoo/callback` // redirectUri
 );
 
 app.use(
@@ -73,6 +74,29 @@ app.get("/api/user/profile", async (req, res) => {
   }
 });
 
+app.get("/api/leagues", async (req, res) => {
+  if (!req.session.access_token) {
+    return res.status(401).send("Not authenticated");
+  }
+
+  // Set the token for the user
+  yf.setUserToken(req.session.access_token);
+
+  try {
+    const leagueKeys = config.Leagues.map(
+      (league) => `nfl.l.${league.Key}`
+    );
+
+    const leaguesData = await yf.game.leagues("nfl", leagueKeys);
+    res.json(leaguesData);
+  } catch (error) {
+    console.error("Failed to retrieve league information:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to retrieve league information from Yahoo API." });
+  }
+});
+
 app.get("/auth/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err) {
@@ -99,6 +123,6 @@ if (process.env.USE_HTTPS != "true") {
   };
 
   https.createServer(sslOptions, app).listen(port, () => {
-    console.log(`Example app listening at https://${process.env.HOSTNAME}`);
+    console.log(`Example app listening at https://${process.env.APP_HOSTNAME}`);
   });
 }
