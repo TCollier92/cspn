@@ -97,6 +97,134 @@ app.get("/api/leagues", async (req, res) => {
   }
 });
 
+app.get("/api/leagues/:league_key/free-agents", async (req, res) => {
+  if (!req.session.access_token) {
+    return res.status(401).send("Not authenticated");
+  }
+
+  // Set the token for the user
+  yf.setUserToken(req.session.access_token);
+
+  try {
+    const leagueKey = `nfl.l.${req.params.league_key}`;
+    const count = req.query.count || 50; // Default to 50, allow client to override
+
+    // The `yf.league.players` function is for fetching stats for specific players,
+    // not for querying a collection. Passing a string as the second argument makes
+    // the library interpret it as player keys, leading to an incorrect API request.
+    // The correct function to query players in a league with filters is `yf.player.league()`.
+    const playersData = await yf.player.league(leagueKey, {
+      status: "FA",
+      sort: "ADP",
+      count: count,
+    });
+
+    res.json(playersData.players || []);
+  } catch (error) {
+    console.error("Failed to retrieve free agents:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to retrieve free agents from Yahoo API." });
+  }
+});
+
+app.get("/api/leagues/:league_key/draft-results", async (req, res) => {
+  if (!req.session.access_token) {
+    return res.status(401).send("Not authenticated");
+  }
+
+  // Set the token for the user
+  yf.setUserToken(req.session.access_token);
+
+  try {
+    const leagueKey = `nfl.l.${req.params.league_key}`;
+    const draftResultsData = await yf.league.draft_results(leagueKey);
+
+    res.json(draftResultsData.draft_results || []);
+  } catch (error) {
+    console.error("Failed to retrieve draft results:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to retrieve draft results from Yahoo API." });
+  }
+});
+
+app.get("/api/leagues/:league_key/teams", async (req, res) => {
+  if (!req.session.access_token) {
+    return res.status(401).send("Not authenticated");
+  }
+
+  // Set the token for the user
+  yf.setUserToken(req.session.access_token);
+
+  try {
+    const leagueKey = `nfl.l.${req.params.league_key}`;
+    const teamsData = await yf.league.teams(leagueKey);
+
+    res.json(teamsData.teams || []);
+  } catch (error) {
+    console.error("Failed to retrieve teams:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to retrieve teams from Yahoo API." });
+  }
+});
+
+app.get("/api/leagues/:league_key/teams/:team_key/roster", async (req, res) => {
+  if (!req.session.access_token) {
+    return res.status(401).send("Not authenticated");
+  }
+
+  // Set the token for the user
+  yf.setUserToken(req.session.access_token);
+
+  try {
+    // The league_key is part of the team_key, so we only need to pass the team_key.
+    const rosterData = await yf.team.roster(req.params.team_key);
+
+    res.json(rosterData.roster || []);
+  } catch (error) {
+    console.error("Failed to retrieve team roster:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to retrieve team roster from Yahoo API." });
+  }
+});
+
+app.get("/api/leagues/:league_key/players", (req, res) => {
+  const { league_key } = req.params;
+  // This is an unauthenticated call to the public Yahoo v3 API.
+  const url = `https://pub-api.fantasysports.yahoo.com/fantasy/v3/players/nfl/${league_key}?projected=1&average=1&format=rawjson`;
+
+  const apiReq = https.get(url, (apiRes) => {
+    if (apiRes.statusCode !== 200) {
+      console.error(`Yahoo API responded with status ${apiRes.statusCode}`);
+      res
+        .status(apiRes.statusCode)
+        .json({ error: `Yahoo API responded with status ${apiRes.statusCode}` });
+      apiRes.resume(); // Consume response data to free up memory
+      return;
+    }
+
+    apiRes.setEncoding("utf8");
+    let rawData = "";
+    apiRes.on("data", (chunk) => {
+      rawData += chunk;
+    });
+    apiRes.on("end", () => {
+      try {
+        const parsedData = JSON.parse(rawData);
+        res.json(parsedData);
+      } catch (e) {
+        console.error(`Error parsing JSON from Yahoo API: ${e.message}`);
+        res
+          .status(500)
+          .json({ error: "Failed to parse players data from Yahoo API." });
+      }
+    });
+  });
+});
+
 app.get("/auth/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err) {

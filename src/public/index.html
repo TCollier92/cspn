@@ -14,22 +14,255 @@
 
     <div id="profile-container" style="display: none;">
         <h2>Your Leagues</h2>
-        <p>Here is the data we got from Yahoo about your fantasy leagues:</p>
-        <pre id="profile-data"></pre>
-        <a href="/auth/logout">Logout</a>
+
+        <div id="league-controls" style="margin-top: 20px;">
+            <label for="division-select">View Draft Results:</label>
+            <select id="division-select">
+                <option value="0">Select Division</option>
+                <option value="699441">Division 1</option>
+                <option value="590224">Division 2</option>
+                <option value="9988048">Tom Mock</option>
+            </select>
+        </div>
+
+        <div id="draft-results-container" style="display: none; margin-top: 20px;">
+            <h3>Recent Draft Picks</h3>
+            <button id="refresh-button" style="display: none; margin-left: 10px;">Refresh Data</button>
+            <p id="draft-results-status"></p>
+            <table id="draft-results-table" style="width:100%; border-collapse: collapse; display: none;">
+                <thead>
+                    <tr style="text-align: left; background-color: #f2f2f2;">
+                        <th style="padding: 8px; border: 1px solid #ddd;">Pick</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Round</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Player</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Team</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Position</th>
+                    </tr>
+                </thead>
+                <tbody id="draft-results-body">
+                </tbody>
+            </table>
+        </div>
+
+        <div id="available-players-container" style="display: none; margin-top: 20px;">
+            <h3>Top 10 Available Players (by ADP)</h3>
+            <div id="position-filter-container" style="margin-top: 10px; margin-bottom: 10px;">
+                <label for="position-select">Filter by Position:</label>
+                <select id="position-select">
+                    <option value="All">All</option>
+                    <option value="QB">QB</option>
+                    <option value="WR">WR</option>
+                    <option value="RB">RB</option>
+                    <option value="TE">TE</option>
+                    <option value="W/T">W/T</option>
+                    <option value="K">K</option>
+                    <option value="DEF">DEF</option>
+                </select>
+            </div>
+            <p id="available-players-status"></p>
+            <table id="available-players-table" style="width:100%; border-collapse: collapse; display: none;">
+                <thead>
+                    <tr style="text-align: left; background-color: #f2f2f2;">
+                        <th style="padding: 8px; border: 1px solid #ddd;">Player</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Team</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Position</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Avg. Pick</th>
+                    </tr>
+                </thead>
+                <tbody id="available-players-body">
+                </tbody>
+            </table>
+        </div>
+
+        <a href="/auth/logout" style="display: block; margin-top: 20px;">Logout</a>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const authContainer = document.getElementById('auth-container');
             const profileContainer = document.getElementById('profile-container');
-            const profileData = document.getElementById('profile-data');
+            const divisionSelect = document.getElementById('division-select');
+            const draftResultsContainer = document.getElementById('draft-results-container');
+            const draftResultsStatus = document.getElementById('draft-results-status');
+            const draftResultsTable = document.getElementById('draft-results-table');
+            const draftResultsBody = document.getElementById('draft-results-body');
+            const availablePlayersContainer = document.getElementById('available-players-container');
+            const availablePlayersStatus = document.getElementById('available-players-status');
+            const availablePlayersTable = document.getElementById('available-players-table');
+            const availablePlayersBody = document.getElementById('available-players-body');
+            const positionSelect = document.getElementById('position-select');
+            const refreshButton = document.getElementById('refresh-button');
+
+            let allAvailablePlayers = [];
+
+            function renderAvailablePlayers() {
+                const selectedPosition = positionSelect.value;
+                availablePlayersBody.innerHTML = ''; // Clear previous results
+
+                const filteredByPosition = selectedPosition === 'All'
+                    ? allAvailablePlayers
+                    : allAvailablePlayers.filter(p => {
+                        const playerPositions = p.positions || p.pos;
+                        return playerPositions.includes(selectedPosition);
+                    });
+
+                const top10Players = filteredByPosition.slice(0, 10);
+
+                if (top10Players.length > 0) {
+                    availablePlayersStatus.style.display = 'none';
+                    availablePlayersTable.style.display = 'table';
+
+                    top10Players.forEach(player => {
+                        const row = availablePlayersBody.insertRow();
+                        row.insertCell().textContent = player.full_name || `${player.fname} ${player.lname}`;
+                        row.insertCell().textContent = player.team_abbr || 'N/A';
+                        row.insertCell().textContent = (player.positions || player.pos).join(', ');
+                        row.insertCell().textContent = player['average-pick'] || 'N/A';
+
+                        Array.from(row.cells).forEach(cell => {
+                            cell.style.padding = '8px';
+                            cell.style.border = '1px solid #ddd';
+                        });
+                    });
+                } else {
+                    availablePlayersStatus.style.display = 'block';
+                    availablePlayersStatus.textContent = 'No available players found for this position.';
+                    availablePlayersTable.style.display = 'none';
+                }
+            }
+
+            positionSelect.addEventListener('change', renderAvailablePlayers);
+
+            async function fetchAndRenderLeagueData(leagueId) {
+                let draftResults = [];
+
+                // Reset and show loading for both sections
+                draftResultsStatus.textContent = 'Loading...';
+                draftResultsStatus.style.display = 'block';
+                draftResultsTable.style.display = 'none';
+                draftResultsBody.innerHTML = '';
+
+                availablePlayersStatus.textContent = 'Loading available players...';
+                availablePlayersStatus.style.display = 'block';
+                availablePlayersTable.style.display = 'none';
+                availablePlayersBody.innerHTML = '';
+                positionSelect.value = 'All';
+                allAvailablePlayers = [];
+
+                try {
+                    const [draftResponse, playersResponse] = await Promise.all([
+                        fetch(`/api/leagues/${leagueId}/draft-results`),
+                        fetch(`/api/leagues/${leagueId}/players`)
+                    ]);
+    
+                    // Process players first to create a lookup map
+                    let players = [];
+                    const playersMap = new Map();
+                    if (playersResponse.ok) {
+                        const data = await playersResponse.json();
+                        const playersList = data?.service?.player_list || data?.data?.players;
+                        if (playersList && Array.isArray(playersList)) {
+                            players = playersList;
+                            players.forEach(p => playersMap.set(p.player_key, p));
+                        }
+                    } else {
+                        const errorText = await playersResponse.text();
+                        console.error('Failed to fetch available players:', errorText);
+                        availablePlayersStatus.textContent = `Error loading available players: ${errorText}`;
+                    }
+    
+                    // Process draft results
+                    if (draftResponse.ok) {
+                        draftResults = await draftResponse.json();
+                        const madePicks = draftResults.filter(pick => pick.player_key);
+                        if (madePicks.length > 0) {
+                            draftResultsStatus.style.display = 'none';
+                            draftResultsTable.style.display = 'table';
+                            const recentPicks = madePicks.slice(-5).reverse();
+                            recentPicks.forEach(pick => {
+                                const playerInfo = playersMap.get(pick.player_key);
+                                const row = draftResultsBody.insertRow();
+                                row.insertCell().textContent = pick.pick;
+                                row.insertCell().textContent = pick.round;
+                                if (playerInfo) {
+                                    row.insertCell().textContent = playerInfo.full_name || `${playerInfo.fname} ${playerInfo.lname}`;
+                                    row.insertCell().textContent = playerInfo.team_abbr || 'N/A';
+                                    row.insertCell().textContent = (playerInfo.positions || playerInfo.pos).join(', ');
+                                } else {
+                                    row.insertCell().textContent = pick.name.full;
+                                    row.insertCell().textContent = pick.editorial_team_abbr || 'N/A';
+                                    row.insertCell().textContent = pick.display_position;
+                                }
+                                Array.from(row.cells).forEach(cell => {
+                                    cell.style.padding = '8px';
+                                    cell.style.border = '1px solid #ddd';
+                                });
+                            });
+                        } else {
+                            draftResultsStatus.textContent = 'No picks have been made yet.';
+                            draftResultsTable.style.display = 'none';
+                        }
+                    } else {
+                        const errorText = await draftResponse.text();
+                        console.error('Failed to fetch draft results:', errorText);
+                        draftResultsStatus.textContent = `Error loading draft results: ${errorText}`;
+                    }
+    
+                    // Process available players
+                    if (players.length > 0) {
+                        const draftedPlayerKeys = new Set(draftResults.map(pick => pick.player_key).filter(Boolean));
+                        allAvailablePlayers = players
+                            .filter(p => p.player_key && !draftedPlayerKeys.has(p.player_key) && p['average-pick'] != "-")
+                            .sort((a, b) => {
+                                const aPick = a['average-pick'] ? parseFloat(a['average-pick']) : Infinity;
+                                const bPick = b['average-pick'] ? parseFloat(b['average-pick']) : Infinity;
+                                return aPick - bPick;
+                            });
+    
+                        if (allAvailablePlayers.length > 0) {
+                            renderAvailablePlayers();
+                        } else {
+                            availablePlayersStatus.textContent = 'No available players with draft analysis found.';
+                        }
+                    } else if (playersResponse.ok) {
+                        availablePlayersStatus.textContent = 'No available players found. This may be a private league.';
+                    }
+                } catch (error) {
+                    console.error('Error fetching league data:', error);
+                    draftResultsStatus.textContent = 'An error occurred while fetching league data.';
+                    availablePlayersStatus.textContent = 'An error occurred while fetching league data.';
+                }
+            }
+
+            divisionSelect.addEventListener('change', async (event) => {
+                const leagueId = event.target.value;
+
+                if (leagueId === '0') {
+                    draftResultsContainer.style.display = 'none';
+                    availablePlayersContainer.style.display = 'none';
+                    refreshButton.style.display = 'none';
+                    return;
+                }
+                draftResultsContainer.style.display = 'block';
+                availablePlayersContainer.style.display = 'block';
+                refreshButton.style.display = 'inline-block';
+                await fetchAndRenderLeagueData(leagueId);
+            });
+
+            refreshButton.addEventListener('click', async () => {
+                const leagueId = divisionSelect.value;
+                if (leagueId && leagueId !== '0') {
+                    refreshButton.disabled = true;
+                    refreshButton.textContent = 'Refreshing...';
+                    await fetchAndRenderLeagueData(leagueId);
+                    refreshButton.disabled = false;
+                    refreshButton.textContent = 'Refresh Data';
+                }
+            });
 
             try {
                 const response = await fetch('/api/leagues');
                 if (response.ok) {
-                    const leagues = await response.json();
-                    profileData.textContent = JSON.stringify(leagues, null, 2);
                     authContainer.style.display = 'none';
                     profileContainer.style.display = 'block';
                 } else {
