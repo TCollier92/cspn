@@ -34,7 +34,7 @@ RUN if [ "$SKIP_NPM_INSTALL" = "false" ]; then npm install --omit=dev; fi
 COPY . .
 
 # Delete dev certs if this is a production build.
-RUN if [ "$KEEP_CERTS" = "false" ]; then rm -r certs; fi
+RUN if [ "$KEEP_CERTS" = "false" ]; then if [ -d "certs" ]; then rm -r certs; fi; fi
 
 # Expose the port that your application listens on.
 # Change '3000' to the port number your application uses.
