@@ -20,7 +20,7 @@ const yf = new YahooFantasy(
   process.env.YAHOO_CONSUMER_KEY,
   process.env.YAHOO_CONSUMER_SECRET,
   null, // tokenCallbackFunction
-  `https://localhost:${port}/auth/yahoo/callback` // redirectUri
+  `https://${process.env.HOSTNAME}/auth/yahoo/callback` // redirectUri
 );
 
 app.use(
@@ -99,6 +99,6 @@ if (process.env.USE_HTTPS != "true") {
   };
 
   https.createServer(sslOptions, app).listen(port, () => {
-    console.log(`Example app listening at https://localhost:${port}`);
+    console.log(`Example app listening at https://${process.env.HOSTNAME}`);
   });
 }
