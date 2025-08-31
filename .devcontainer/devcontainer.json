@@ -17,7 +17,8 @@
         "args": {
             "SKIP_NPM_INSTALL": "true",
             "INSTALL_BASH":"true",
-            "INSTALL_GIT":"true"
+            "INSTALL_GIT":"true",
+            "KEEP_CERTS":"true"
         }
     },
     "forwardPorts": [

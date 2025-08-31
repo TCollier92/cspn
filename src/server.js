@@ -83,7 +83,7 @@ app.get("/auth/logout", (req, res) => {
   });
 });
 
-if (process.env.NODE_ENV === "production") {
+if (process.env.USE_HTTPS != "true") {
   // In production, the App Platform's load balancer handles SSL termination.
   // The app should listen on HTTP.
   app.listen(port, () => {

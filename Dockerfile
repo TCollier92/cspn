@@ -5,9 +5,10 @@
 FROM node:lts-alpine
 
 ARG SKIP_NPM_INSTALL=false
-# Use an argument to conditionally install bash
 ARG INSTALL_BASH=false
 ARG INSTALL_GIT=false
+ARG KEEP_CERTS=false
+
 
 # Check if bash should be installed
 # This is typically done because some base images (like Alpine) don't include it.
@@ -31,6 +32,9 @@ RUN if [ "$SKIP_NPM_INSTALL" = "false" ]; then npm install --omit=dev; fi
 
 # Copy the rest of the application code into the container.
 COPY . .
+
+# Delete dev certs if this is a production build.
+RUN if [ "$KEEP_CERTS" = "false" ]; then rm -r certs; fi
 
 # Expose the port that your application listens on.
 # Change '3000' to the port number your application uses.

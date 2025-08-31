@@ -9,9 +9,9 @@ yarn-error.log*
 .env.*
 !.env.example
 
-# Certificates
-certs/
-
 # Git
 .git
 .gitignore
+
+build-test-container.sh
+run-test-container.sh
