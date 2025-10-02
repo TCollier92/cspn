@@ -32,8 +32,6 @@ app.use(
   })
 );
 
-app.use(express.static("src/public"));
-
 // Redirect the user to the Yahoo authentication page
 app.get("/auth/yahoo", (req, res) => {
   yf.auth(res);
@@ -235,6 +233,16 @@ app.get("/auth/logout", (req, res) => {
   });
 });
 
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('/*splat', (req, res) => {
+  console.log("catchall");
+  res.sendFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'))
+});
+
 if (process.env.USE_HTTPS != "true") {
   // In production, the App Platform's load balancer handles SSL termination.
   // The app should listen on HTTP.
@@ -246,8 +254,8 @@ if (process.env.USE_HTTPS != "true") {
 } else {
   // For local development, we use the self-signed certificate.
   const sslOptions = {
-    key: fs.readFileSync(path.join(__dirname, "..", "certs", "key.pem")),
-    cert: fs.readFileSync(path.join(__dirname, "..", "certs", "cert.pem")),
+    key: fs.readFileSync(path.join(__dirname, "../..", "certs", "key.pem")),
+    cert: fs.readFileSync(path.join(__dirname, "../..", "certs", "cert.pem")),
   };
 
   https.createServer(sslOptions, app).listen(port, () => {
